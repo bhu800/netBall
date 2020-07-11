@@ -33,7 +33,7 @@ function startGame() {
 var myGameArea = {
 
     canvas : document.createElement("canvas"),
-    
+
     start : function() {
         this.canvas.height = 500;
         this.canvas.width = 700;
@@ -216,7 +216,7 @@ function welcomeToGameScreen() {
     var ctx = myGameArea.context;
     ctx.fillStyle = "white";
     ctx.font= "900 70px Orbitron";
-    ctx.fillText("NetBall", 140, 150);
+    ctx.fillText("NetBall", 240, 150);
     ctx.font = "900 40px 'Share Tech Mono'";
     ctx.fillText("instructions: ", 60, 300);
     ctx.font = "900 20px 'Share Tech Mono'";
