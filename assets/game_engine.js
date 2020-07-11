@@ -1,0 +1,269 @@
+var paddle1;
+var paddle2;
+var framesPerSecond = 50;
+
+const PADDLE_HEIGHT = 70;
+const PADDLE_WIDTH = 5;
+const PADDLE1_XPOS = 10;
+
+const VIRTUAL_PLAYER_PADDLE_SPEED = 7;
+const ACTUAL_PLAYER_PADDLE_SPEED = 8;
+
+var ballInitialXPos = 350;
+var ballInitialYPos = 250;
+var ballInitialXSpeed = 5.4; //don,t set x-speed to 8, as then due to some ...
+var ballInitialYSpeed = 7;  // ... ball stops bouncing from the paddle2
+const BALL_RADIUS = 6;
+
+
+const INITIAL_SCORE = 0;
+var score = INITIAL_SCORE;
+const INITIAL_LIVES = 3  ;
+var remainingLives = INITIAL_LIVES;
+
+
+function startGame() {
+    myGameArea.start();
+
+    paddle1 = new paddleComponent(PADDLE1_XPOS, myGameArea.canvas.height/2-PADDLE_HEIGHT/2, PADDLE_WIDTH, PADDLE_HEIGHT, "white");
+
+    paddle2 = new  paddleComponent(myGameArea.canvas.width - PADDLE1_XPOS - PADDLE_WIDTH, myGameArea.canvas.height/2-PADDLE_HEIGHT/2, PADDLE_WIDTH, PADDLE_HEIGHT, "white")
+}
+
+var myGameArea = {
+
+    canvas : document.createElement("canvas"),
+    
+    start : function() {
+        this.canvas.height = 500;
+        this.canvas.width = 700;
+        this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+        // exp...
+        welcomeToGameScreen();
+        
+    },
+    setGame : function() {
+        myGameArea.clear();
+        clearInterval(timer);
+        window.removeEventListener("keypress", myGameArea.setGame)
+        this.interval = setInterval(updateGameArea, 1000/framesPerSecond);
+        window.addEventListener("keydown", function(event) {
+                myGameArea.key = event.keyCode;
+            });
+        window.addEventListener("keyup", function(event) {
+            myGameArea.key = false;
+        })
+    },
+    setNet : function() {
+        ctx = this.context;
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.setLineDash([10, 12])
+        ctx.moveTo(this.canvas.width/2, 0);
+        ctx.lineTo(this.canvas.width/2, this.canvas.height);
+        ctx.strokeStyle = "white";
+        ctx.stroke();
+    },
+    setScore : function() {
+        var ctx = this.context;
+        ctx.fillStyle = "white";
+        ctx.font = " 15px Inconsolata"
+        ctx.fillText("Your Score: "+score, 150, 20);
+    },
+    setLives : function() {
+        var ctx = this.context;
+        
+        var remainingLivesHeartsString = "";
+        
+        for (var i=0; i<remainingLives; i++) {
+            remainingLivesHeartsString += "\uf004 "
+        }  
+        
+        ctx.fillStyle = "red";
+        ctx.font = "900 12px 'FontAwesome'";
+        ctx.fillText(remainingLivesHeartsString,500,20);
+    },
+    clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+}
+
+var ball = {
+
+    x : ballInitialXPos,
+    y : ballInitialYPos,
+    speedX : ballInitialXSpeed,
+    speedY : ballInitialYSpeed,
+    radius : BALL_RADIUS,
+
+    update : function() {
+        ctx = myGameArea.context;
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
+        ctx.fill();
+    },
+    bounceWall : function() {
+        if (this.y <= this.radius || this.y >= myGameArea.canvas.height - this.radius) {
+            this.speedY *= -1;
+        }
+    },
+    bouncePaddle : function() {
+        if (this.x <= PADDLE1_XPOS+PADDLE_WIDTH+BALL_RADIUS && this.x > paddle1.x+paddle1.width) {
+            if (this.y >= paddle1.y-3 && this.y <= (paddle1.y + paddle1.height+3)) {
+                this.speedX *= -1;
+                score++;
+            }
+        };
+        if (this.x >= paddle2.x-this.radius && this.x <= paddle2.x) {
+            if (this.y >= paddle2.y-3 && this.y <= (paddle2.y + paddle2.height+3)) {
+                this.speedX *= -1;
+            }
+        };
+    },
+    newPos : function() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+    },
+    reset : function() {
+        if (ball.x < 0 ) {
+            
+            if (remainingLives > 1) {
+                ball.x = ballInitialXPos;
+                ball.y = ballInitialYPos;
+                ball.speedX = ballInitialXSpeed;
+                ball.speedY = ballInitialYSpeed;
+                remainingLives--;
+            } else {
+                showGameOverScreen();
+            }
+        }
+        else if (ball.x > myGameArea.canvas.width) {
+            ball.x = ballInitialXPos;
+            ball.y = ballInitialYPos;
+            ball.speedX = -ballInitialXSpeed;
+            ball.speedY = -ballInitialYSpeed;
+        }
+    }
+}
+
+function paddleComponent(x, y, width, height, color) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+    this.center = this.y + this.height/2;
+    this.speedY = 0;
+    this.update = function() {
+        ctx = myGameArea.context;
+        ctx.fillStyle = color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+    };
+    this.newPos = function() {
+        this.y += this.speedY;
+    }
+};
+
+function virtualPlayerPaddleMovement() {
+    paddle2.speedY = 0;
+    var paddle2Center = 0;
+    if (ball.speedX > 0) {
+        if (ball.y < paddle2.y+15) {
+            paddle2.speedY = -VIRTUAL_PLAYER_PADDLE_SPEED;
+        }
+        else if (ball.y > paddle2.y+paddle2.height-15) {
+            paddle2.speedY = VIRTUAL_PLAYER_PADDLE_SPEED;
+        }
+        else {
+            paddle2.speedY = 0;
+        }
+    };
+}
+
+function actualPlayerPaddleMovement() {
+    if (myGameArea.key && myGameArea.key == 70 && paddle1.y >= 0) {
+        paddle1.speedY = -ACTUAL_PLAYER_PADDLE_SPEED;
+    }
+    if (myGameArea.key && myGameArea.key == 74 && paddle1.y < myGameArea.canvas.height - paddle1.height) {
+        paddle1.speedY = ACTUAL_PLAYER_PADDLE_SPEED;
+    };
+};
+
+function showGameOverScreen() {
+    myGameArea.clear();
+    clearInterval(myGameArea.interval);
+
+    ctx = myGameArea.context;
+    ctx.fillStyle = "white"
+    ctx.font = "900 50px Inconsolata";
+    ctx.fillText("Game Over", 240, 220);
+    ctx.font = "900 20px Inconsolata";
+    ctx.fillText("Your Total Score", 270, 270);
+    ctx.fillText(score, 350, 295);
+    ctx.font = "900 15px Inconsolata";
+    ctx.fillText("click 'ENTER' to play new game", 240, 470);
+
+    window.addEventListener('keypress', function(event) {
+        var key = event.keyCode;
+        if (key == 13) {
+            window.location.reload();
+        }
+    });
+};
+
+function welcomeToGameScreen() {
+    var ctx = myGameArea.context;
+    ctx.fillStyle = "white";
+    ctx.font= "900 70px Orbitron";
+    ctx.fillText("NetBall", 140, 150);
+    ctx.font = "900 40px 'Share Tech Mono'";
+    ctx.fillText("instructions: ", 60, 300);
+    ctx.font = "900 20px 'Share Tech Mono'";
+    ctx.fillText("'f' key to move paddle UP", 370, 290);
+    ctx.fillText("'j' key to move paddle DOWN", 370, 320);
+    fillFlashyText();
+    //ctx.fillText("press any key to start", 250, 450);
+    window.addEventListener("keypress", myGameArea.setGame)
+}
+
+function fillFlashyText() {
+counter = 0;
+timer = setInterval(function() {
+    counter++;
+    if (counter%2 == 1) {
+        myGameArea.context.fillStyle = "white";
+        myGameArea.context.font= "900 20px Orbitron";
+        myGameArea.context.fillText("press any key to start", 240, 450);
+    }
+    else {
+        myGameArea.context.clearRect(0, 400, 500, 300);
+    }
+}, 200)
+}
+
+function updateGameArea() {
+    myGameArea.clear();
+    paddle1.speedY = 0;
+
+
+    ball.bouncePaddle();
+    ball.bounceWall();
+
+    virtualPlayerPaddleMovement();
+    actualPlayerPaddleMovement();
+
+    ball.newPos();
+    paddle1.newPos();
+    paddle2.newPos();
+
+    myGameArea.setNet();
+    myGameArea.setScore();
+    myGameArea.setLives();
+
+    ball.update();
+    paddle1.update();
+    paddle2.update();
+
+    ball.reset();
+}
